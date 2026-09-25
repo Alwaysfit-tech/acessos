@@ -539,6 +539,44 @@
   font-size: 14px;
 }
 .nota { max-width: 70ch; margin: 0; color: var(--tinta-3); font-size: 14px; }
+/* a licença CC BY da música pede o crédito visível */
+.credito { max-width: 70ch; margin: 0; color: var(--tinta-3); font-size: 13px; }
+.credito a { color: var(--tinta-2); text-decoration: underline dashed var(--ouro); text-underline-offset: 3px; }
+
+/* ---------- a música de fundo: botão de feltro com aro dourado, fixo no canto ---------- */
+
+.musica {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid var(--ouro);
+  border-radius: 50%;
+  /* feltro em gradiente: a textura do linho seria embutida de novo na página pública */
+  background: radial-gradient(circle at 35% 30%, var(--tinta-2), var(--feltro) 70%);
+  color: var(--ouro-claro);
+  box-shadow: inset 0 0 0 3px var(--feltro), inset 0 0 0 4.5px rgba(236, 200, 107, .5),
+    0 6px 14px rgba(59, 38, 20, .4);
+  cursor: pointer;
+  transition: transform .35s cubic-bezier(.2, 1.6, .4, 1);
+}
+.musica:hover, .musica:focus-visible { transform: rotate(-8deg); }
+.musica svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.musica .musica-corpo { fill: currentColor; }
+.musica[aria-pressed="false"] svg { opacity: .7; }
 .topo {
   padding: 10px 18px;
   border: var(--ponto);
@@ -603,6 +641,7 @@
   .hint { display: none; }
   .lema { font-size: 15.5px; }
   .flamula .host { display: none; }
+  .musica { right: 12px; bottom: 12px; width: 46px; height: 46px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -611,6 +650,8 @@
   .emblema:hover img, .emblema:focus-visible img { transform: none; }
   .guilda-membro:hover img, .guilda-membro:focus-visible img { transform: none; }
   .pergaminho[open] { animation: none; }
+  .musica { transition: none; }
+  .musica:hover, .musica:focus-visible { transform: none; }
 }
 
 </style>
@@ -648,10 +689,16 @@
       <span><i class="selo selo-homolog">homologa&#231;&#227;o</i> ambiente de teste, n&#227;o compra de verdade</span>
     </div>
     <p class="nota">Revisada em 18 de setembro de 2026. Tecle <b>/</b> para buscar de qualquer lugar da p&#225;gina e <b>Esc</b> para limpar. Marketplaces, planilhas e contas de infraestrutura n&#227;o entram aqui: esta p&#225;gina &#233; s&#243; dos sites que a AlwaysFit construiu.</p>
+    <p class="credito">M&#250;sica de fundo: &#8220;Minstrel Guild&#8221;, de Kevin MacLeod (<a href="https://incompetech.com/" target="_blank" rel="noopener noreferrer">incompetech.com</a>), licen&#231;a <a href="https://creativecommons.org/licenses/by/4.0/deed.pt-br" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
     <button type="button" class="topo" id="topo">Voltar ao estandarte</button>
   </footer>
 
   <dialog class="pergaminho" id="pergaminho" aria-labelledby="pergaminho-nome" aria-describedby="pergaminho-resumo"></dialog>
+
+  <audio id="musica-faixa" src="musica.mp3" loop preload="none"></audio>
+  <button type="button" class="musica" id="musica" aria-label="M&#250;sica de fundo" aria-pressed="false" title="Tocar a m&#250;sica">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path class="musica-corpo" d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z"></path><path class="musica-ondas" d="M16 9.5l5 5M21 9.5l-5 5"></path></svg>
+  </button>
 </div>
 
 <script>
@@ -1076,6 +1123,46 @@ document.addEventListener("keydown", function (e) {
 });
 
 document.getElementById("topo").addEventListener("click", function () { rolarAte(0); });
+
+/* a musica de fundo ("Minstrel Guild", Kevin MacLeod, CC BY 4.0): comeca no primeiro clique ou
+   tecla, porque o navegador nao deixa tocar antes; o botao silencia ou volta a tocar, e a
+   escolha fica guardada neste navegador */
+const faixa = document.getElementById("musica-faixa");
+const botaoMusica = document.getElementById("musica");
+const CHAVE_MUSICA = "alwaysfit-musica-silenciada";
+const ONDAS = "M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11";
+const XIS = "M16 9.5l5 5M21 9.5l-5 5";
+let musicaSilenciada = false;
+try { musicaSilenciada = localStorage.getItem(CHAVE_MUSICA) === "1"; } catch (e) { /* sem armazenamento: vale so para esta visita */ }
+faixa.volume = 0.35;
+
+function tocarMusica() {
+  faixa.play().catch(function () { /* bloqueado ou sem rede: o botao segue mostrando a musica parada */ });
+}
+
+function desenharBotaoMusica() {
+  const tocando = !faixa.paused;
+  botaoMusica.setAttribute("aria-pressed", tocando ? "true" : "false");
+  botaoMusica.title = tocando ? "Silenciar a m\u00fasica" : "Tocar a m\u00fasica";
+  botaoMusica.querySelector(".musica-ondas").setAttribute("d", tocando ? ONDAS : XIS);
+}
+
+faixa.addEventListener("play", desenharBotaoMusica);
+faixa.addEventListener("pause", desenharBotaoMusica);
+
+/* parada: toca (inclusive no primeiro clique, que ainda nao comecou nada); tocando: silencia */
+botaoMusica.addEventListener("click", function () {
+  musicaSilenciada = !faixa.paused;
+  try { localStorage.setItem(CHAVE_MUSICA, musicaSilenciada ? "1" : "0"); } catch (e) { /* idem */ }
+  if (musicaSilenciada) faixa.pause();
+  else tocarMusica();
+});
+
+function comecarMusica() {
+  if (faixa.paused && !musicaSilenciada) tocarMusica();
+}
+document.addEventListener("click", comecarMusica);
+document.addEventListener("keydown", comecarMusica);
 
 desenhar();
 </script>
